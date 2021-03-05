@@ -1,0 +1,6 @@
+name: PlotSquaredMG
+version: ${project.version}
+main: com.plotsquaredmg.PlotSquaredMG
+author: Addaxy
+depend:
+  - PlotSquared
