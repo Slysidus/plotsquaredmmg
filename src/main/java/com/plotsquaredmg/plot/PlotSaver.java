@@ -3,8 +3,6 @@ package com.plotsquaredmg.plot;
 import com.mojang.nbt.CompoundTag;
 import com.mojang.nbt.ListTag;
 import com.mojang.nbt.NbtIo;
-import com.plotsquaredmg.world.PlotData;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.world.level.chunk.storage.RegionFile;
@@ -25,14 +23,12 @@ public class PlotSaver {
 
     public void save(PlotData plotData) throws IOException {
         final ListTag<CompoundTag> defaultEntities = new ListTag<>();
-
         final Long2ObjectMap<RegionFile> regionsCache = new Long2ObjectArrayMap<>();
 
         int chunkIndex = 0;
         final int totalChunks = plotData.getChunks().size();
-        final int progressStep = Math.max(1, totalChunks / 20);
-        for (Long2ObjectMap.Entry<Int2IntMap> entry : plotData.getChunks().long2ObjectEntrySet()) {
-            final long chunk = entry.getLongKey();
+        final int progressStep = Math.max(1, totalChunks / 50);
+        for (long chunk : plotData) {
             final int chunkX = (int) (chunk >> 32), chunkZ = (int) chunk;
 
             final int regionX = (int) Math.floor(chunkX / 32.), regionZ = (int) Math.floor(chunkZ / 32.);
@@ -69,6 +65,18 @@ public class PlotSaver {
 
             if (++chunkIndex % progressStep == 0 || chunkIndex == totalChunks) {
                 logger.info(String.format("Saved chunk %s/%s [update every %s chunks]", chunkIndex, totalChunks, progressStep));
+            }
+
+            if (chunkIndex % 8192 == 0) {
+                logger.info("(MEMORY SAVER) Clearing regions cache..");
+                for (RegionFile r : regionsCache.values()) {
+                    try {
+                        r.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                regionsCache.clear();
             }
         }
 

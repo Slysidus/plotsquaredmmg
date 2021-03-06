@@ -6,9 +6,8 @@ import com.intellectualcrafters.plot.object.Plot;
 import com.mojang.nbt.CompoundTag;
 import com.mojang.nbt.ListTag;
 import com.mojang.nbt.NbtIo;
-import com.plotsquaredmg.world.PlotData;
-import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.bytes.Byte2ObjectArrayMap;
+import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.world.level.chunk.DataLayer;
@@ -18,6 +17,7 @@ import org.bukkit.World;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 @SuppressWarnings("unchecked")
 public class PlotReader {
@@ -41,9 +41,8 @@ public class PlotReader {
 
     private PlotData readRegion(int topX, int bottomX, int topZ, int bottomZ) throws IOException {
         final Long2ObjectMap<RegionFile> regionsCache = new Long2ObjectArrayMap<>();
-        final Long2ObjectMap<Int2IntMap> chunks = new Long2ObjectArrayMap<>();
+        final Long2ObjectMap<Byte2ObjectMap<int[]>> chunks = new Long2ObjectArrayMap<>();
 
-        long nanos = System.nanoTime();
         final int bottomChunkX = (int) Math.floor(bottomX / 16.), topChunkX = (int) Math.floor(topX / 16.);
         final int bottomChunkZ = (int) Math.floor(bottomZ / 16.), topChunkZ = (int) Math.floor(topZ / 16.);
         for (int chunkX = bottomChunkX; chunkX <= topChunkX; chunkX++) {
@@ -66,13 +65,15 @@ public class PlotReader {
                 final CompoundTag levelData = NbtIo.read(regionChunkInputStream).getCompound("Level");
                 regionChunkInputStream.close();
 
-                // todo : offset
-                final long chunk = (((long) chunkX) << 32) | (chunkZ & 0xffffffffL);
-                final Int2IntMap chunkData = new Int2IntArrayMap();
-
                 final ListTag<CompoundTag> sectionsTag = (ListTag<CompoundTag>) levelData.getList("Sections");
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
+                        final int X = (chunkX << 4) + x, Z = (chunkZ << 4) + z;
+                        if (!(X >= bottomX && X <= topX && Z >= bottomZ && Z <= topZ)) {
+                            continue;
+                        }
+
+                        int[] column = new int[256];
                         for (int i = 0; i < (256 / 16); i++) {
                             if (i >= sectionsTag.size()) {
                                 continue;
@@ -83,8 +84,8 @@ public class PlotReader {
 
                             final byte[] blocks = sectionTag.getByteArray("Blocks");
                             final DataLayer dataLayer = new DataLayer(sectionTag.getByteArray("Data"), 4);
-                            final DataLayer skyLightLayer = new DataLayer(sectionTag.getByteArray("SkyLight"), 4);
                             final DataLayer blockLightLayer = new DataLayer(sectionTag.getByteArray("BlockLight"), 4);
+                            final DataLayer skyLightLayer = new DataLayer(sectionTag.getByteArray("SkyLight"), 4);
 
                             for (int _y = 0; _y < 16; _y++) {
                                 final int blockIndex = (_y << 8) | (z << 4) | x;
@@ -92,19 +93,44 @@ public class PlotReader {
                                     continue;
                                 }
 
-                                final int y = _y + (yBase << 4);
-                                final int block = (y << 8) | (z << 4) | x;
+                                if (blocks[blockIndex] == 0) {
+                                    continue;
+                                }
+
                                 final int blockData = (blocks[blockIndex] & 0xff)
                                         | (dataLayer.get(x, _y, z) & 0x0f) << 8
                                         | (blockLightLayer.get(x, _y, z) & 0x0f) << 12
                                         | (skyLightLayer.get(x, _y, z) & 0x0f) << 16;
-                                chunkData.put(block, blockData);
+                                column[_y + (yBase << 4)] = blockData;
                             }
                         }
+
+                        int newSize = 256;
+                        for (int i = 255; i >= 0; i--) {
+                            if (column[i] == 0) {
+                                newSize--;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        if (newSize < 256) {
+                            column = Arrays.copyOfRange(column, 0, newSize);
+                        }
+
+                        final int newX = X - bottomX, newZ = Z - bottomZ;
+                        final int newChunkX = (int) Math.floor(newX / 16.), newChunkZ = (int) Math.floor(newZ / 16.);
+                        final long newChunk = (((long) newChunkX) << 32) | (newChunkZ & 0xffffffffL);
+                        final int relX = Math.floorMod(newX, 16) & 0x0f, relZ = Math.floorMod(newZ, 16) & 0x0f;
+
+                        Byte2ObjectMap<int[]> columnMap = chunks.get(newChunk);
+                        if (columnMap == null) {
+                            columnMap = new Byte2ObjectArrayMap<>();
+                            chunks.put(newChunk, columnMap);
+                        }
+                        columnMap.put((byte) ((relX << 4) | relZ), column);
                     }
                 }
-
-                chunks.put(chunk, chunkData);
             }
         }
 

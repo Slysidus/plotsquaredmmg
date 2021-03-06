@@ -14,7 +14,9 @@ import com.plotsquared.general.commands.CommandDeclaration;
 import com.plotsquaredmg.PlotSquaredMG;
 import com.plotsquaredmg.plot.PlotReader;
 import com.plotsquaredmg.plot.PlotSaver;
-import com.plotsquaredmg.world.PlotData;
+import com.plotsquaredmg.plot.PlotData;
+import com.plotsquaredmg.util.SnailGrid;
+import com.plotsquaredmg.util.Vector2D;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -87,6 +89,7 @@ public class MakeMegaSubCommand extends SubCommand implements Listener {
         logger.info("Data from the plot has been read successfully!");
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             logger.info("[STEP 1] Reading data from the plot..");
+            logger.info("Note: no progress is sent for this step, but as long as no error is thrown, it's doing its job.");
             PlotData plotDataLoad = null;
             try {
                 logger.info("Reading data from the plot..");
@@ -121,15 +124,15 @@ public class MakeMegaSubCommand extends SubCommand implements Listener {
             final int roadExtraFloor = (int) Math.floor(plotWorld.ROAD_WIDTH / 2.);
             final int gridIncrement = roadExtraFloor * 2 + (plotWorld.ROAD_WIDTH % 2 == 1 ? 1 : 0) + plotWorld.PLOT_WIDTH;
 
-//            final PlotData modelData = plotData.copy();
-//            final SnailGrid snailGrid = new SnailGrid(gridIncrement, 0, 0);
-//            final int generateProgressStep = plotsToGenerate / 5;
-//            for (int generated = 1; generated <= plotsToGenerate; generated++) {
-//                plotData.merge(modelData, snailGrid.next());
-//                if (generated % generateProgressStep == 0 || generated == plotsToGenerate) {
-//                    logger.info(String.format("Generated plot %s/%s [update every %s plots]", generated, plotsToGenerate, generateProgressStep));
-//                }
-//            }
+            plotData.newPlot(new Vector2D(0, 0));
+            final SnailGrid snailGrid = new SnailGrid(gridIncrement, 0, 0);
+            final int generateProgressStep = plotsToGenerate / 5;
+            for (int generated = 1; generated <= plotsToGenerate; generated++) {
+                plotData.newPlot(snailGrid.next());
+                if (generated % generateProgressStep == 0 || generated == plotsToGenerate) {
+                    logger.info(String.format("Generated plot %s/%s [update every %s plots]", generated, plotsToGenerate, generateProgressStep));
+                }
+            }
 
             logger.info("[STEP 3] Saving generated world..");
             logger.info("Preparing bukkit world.. (moving sync)");
@@ -183,7 +186,7 @@ public class MakeMegaSubCommand extends SubCommand implements Listener {
                     plugin.getServer().getScheduler().runTask(plugin, () -> {
                         SetupObject setupObject = new SetupObject();
                         setupObject.world = targetWorldName;
-                        setupObject.setupGenerator = PS.imp().getPluginName();
+                        setupObject.setupGenerator = plugin.getName();
                         setupObject.plotManager = PS.imp().getPluginName();
                         SetupUtils.manager.setupWorld(setupObject);
 
@@ -219,7 +222,7 @@ public class MakeMegaSubCommand extends SubCommand implements Listener {
 
                         logger.info("World has been saved to PlotSquared, use '/plot area tp " + targetWorldName + "'");
                         final long durationSeconds = (System.currentTimeMillis() - startedAt) / 1000;
-                        final String time = String.format("%s minutes and %s seconds", durationSeconds / 60, durationSeconds % 60);
+                        final String time = String.format("%s hours %s minutes and %s seconds", durationSeconds / 3600, durationSeconds / 60, durationSeconds % 60);
                         logger.info("FINISHED - Mega world generated in " + time + ".");
                         if (plotPlayer.isOnline()) {
                             MainUtil.sendMessage(plotPlayer, "&aMega world generation finished in " + time + "!");
