@@ -1,72 +1,46 @@
 package com.plotsquaredmg.world;
 
 import com.mojang.nbt.CompoundTag;
-import com.mojang.nbt.DoubleTag;
 import com.mojang.nbt.ListTag;
-import com.plotsquaredmg.util.Vector2D;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.world.level.chunk.DataLayer;
-
-import java.util.*;
+import org.apache.commons.lang.Validate;
 
 public class PlotData implements Cloneable {
-    private final Map<Vector2D, PlotDataColumn> columns;
-    private final PlotEntities entities;
-    private final PlotEntities tileEntities;
+    private final Long2ObjectMap<Int2IntMap> chunks;
 
     public PlotData() {
-        this.columns = new HashMap<>();
-        this.entities = new PlotEntities(PlotEntitiesType.ENTITIES);
-        this.tileEntities = new PlotEntities(PlotEntitiesType.TILE_ENTITIES);
+        this.chunks = new Long2ObjectArrayMap<>();
     }
 
-    private PlotData(Map<Vector2D, PlotDataColumn> columns, PlotEntities entities, PlotEntities tileEntities) {
-        this.columns = columns;
-        this.entities = entities;
-        this.tileEntities = tileEntities;
+    public PlotData(Long2ObjectMap<Int2IntMap> chunks) {
+        this.chunks = chunks;
     }
 
-    public void setBlockNBTData(int x, int y, int z, BlockNBTData blockData) {
-        final Vector2D columnPosition = new Vector2D(x, z);
-        if (!columns.containsKey(columnPosition)) {
-            this.columns.put(columnPosition, new PlotDataColumn());
-        }
-        final PlotDataColumn column = columns.get(columnPosition);
-        column.blocksData[y & 0xff] = blockData;
+//    public void merge(PlotData other, Vector2D shift) {
+//        for (Map.Entry<Vector2D, PlotDataColumn> entry : other.columns.entrySet()) {
+//            final Vector2D newPosition = new Vector2D(entry.getKey().getX() + shift.getX(),
+//                    entry.getKey().getZ() + shift.getZ());
+//            this.columns.put(newPosition, entry.getValue());
+//        }
+//        this.entities.getValue().addAll(other.entities.shiftPositions(shift));
+//        this.tileEntities.getValue().addAll(other.tileEntities.shiftPositions(shift));
+//    }
+
+    public boolean isEmpty() {
+        return chunks.isEmpty();
     }
 
-    public BlockNBTData getBlockNBTData(int x, int y, int z) {
-        final PlotDataColumn column = columns.get(new Vector2D(x, z));
-        return column != null ? column.blocksData[y & 0xff] : null;
-    }
-
-    public Map<Vector2D, PlotData> splitIntoChunks() {
-        final Map<Vector2D, PlotData> chunks = new HashMap<>();
-        for (Vector2D columnPosition : columns.keySet()) {
-            final int chunkX = (int) Math.floor(columnPosition.getX() / 16.),
-                    chunkZ = (int) Math.floor(columnPosition.getZ() / 16.);
-            final Vector2D chunkVector = new Vector2D(chunkX, chunkZ);
-            if (!chunks.containsKey(chunkVector)) {
-                chunks.put(chunkVector, new PlotData());
-            }
-
-            final PlotDataColumn column = columns.get(columnPosition);
-            final Vector2D relColumnPosition = new Vector2D(
-                    Math.floorMod(columnPosition.getX(), 16), Math.floorMod(columnPosition.getZ(), 16));
-
-            final PlotData plotData = chunks.get(chunkVector);
-            plotData.columns.put(relColumnPosition, column);
-        }
-
-        for (Map.Entry<Vector2D, PlotData> entry : chunks.entrySet()) {
-            final Vector2D chunkPosition = entry.getKey();
-            final PlotData plotData = entry.getValue();
-            plotData.entities.value.addAll(this.entities.getEntitiesInChunk(chunkPosition.getX(), chunkPosition.getZ()));
-            plotData.tileEntities.value.addAll(this.tileEntities.getEntitiesInChunk(chunkPosition.getX(), chunkPosition.getZ()));
-        }
+    public Long2ObjectMap<Int2IntMap> getChunks() {
         return chunks;
     }
 
-    public ListTag<CompoundTag> toSections() {
+    public ListTag<CompoundTag> toSections(long chunk) {
+        final Int2IntMap chunkBlocks = chunks.get(chunk);
+        Validate.notNull(chunkBlocks, "toSections must be called for an existing chunk");
+
         final ListTag<CompoundTag> sectionTags = new ListTag<>("Sections");
         for (int yBase = 0; yBase < (256 / 16); yBase++) {
             boolean allAir = true;
@@ -74,8 +48,9 @@ public class PlotData implements Cloneable {
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        final BlockNBTData blockData = getBlockNBTData(x, y + (yBase << 4), z);
-                        if (blockData != null && blockData.getBlock() != 0) {
+                        final int block = (y + (yBase << 4) << 8) | (z << 4) | x;
+                        final byte blockData = (byte) chunkBlocks.get(block);
+                        if (blockData != 0) {
                             allAir = false;
                             break all;
                         }
@@ -95,15 +70,16 @@ public class PlotData implements Cloneable {
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        final BlockNBTData blockData = getBlockNBTData(x, y + (yBase << 4), z);
-                        if (blockData == null) {
+                        final int block = (y + (yBase << 4) << 8) | (z << 4) | x;
+                        final int blockData = chunkBlocks.get(block);
+                        if (blockData == 0) {
                             continue;
                         }
 
-                        blocks[(y << 8) | (z << 4) | x] = blockData.getBlock();
-                        dataValues.set(x, y, z, blockData.getData());
-                        skyLight.set(x, y, z, blockData.getSkyLight());
-                        blockLight.set(x, y, z, blockData.getBlockLight());
+                        blocks[(y << 8) | (z << 4) | x] = (byte) blockData;
+                        dataValues.set(x, y, z, (blockData >> 8) & 0x0f);
+                        skyLight.set(x, y, z, (blockData >> 12) & 0x0f);
+                        blockLight.set(x, y, z, (blockData >> 16) & 0x0f);
                     }
                 }
             }
@@ -118,121 +94,7 @@ public class PlotData implements Cloneable {
         return sectionTags;
     }
 
-    public void merge(PlotData other, Vector2D shift) {
-        for (Map.Entry<Vector2D, PlotDataColumn> entry : other.columns.entrySet()) {
-            final Vector2D newPosition = new Vector2D(entry.getKey().getX() + shift.getX(),
-                    entry.getKey().getZ() + shift.getZ());
-            this.columns.put(newPosition, entry.getValue());
-        }
-        this.entities.getValue().addAll(other.entities.shiftPositions(shift));
-        this.tileEntities.getValue().addAll(other.tileEntities.shiftPositions(shift));
-    }
-
-    public PlotData copy() {
-        return new PlotData(
-                new HashMap<>(columns), entities.copy(), tileEntities.copy()
-        );
-    }
-
-    public boolean isEmpty() {
-        return columns.isEmpty();
-    }
-
-    public PlotEntities getEntities() {
-        return entities;
-    }
-
-    public PlotEntities getTileEntities() {
-        return tileEntities;
-    }
-
-    public static class PlotDataColumn {
-        private final BlockNBTData[] blocksData;
-
-        public PlotDataColumn() {
-            this.blocksData = new BlockNBTData[256];
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            PlotDataColumn column = (PlotDataColumn) o;
-            return Arrays.equals(blocksData, column.blocksData);
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.hashCode(blocksData);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static class PlotEntities {
-        private final PlotEntitiesType type;
-        private final List<CompoundTag> value;
-
-        public PlotEntities(PlotEntitiesType type) {
-            this.type = type;
-            this.value = new ArrayList<>();
-        }
-
-        public PlotEntities(PlotEntitiesType type, List<CompoundTag> value) {
-            this.type = type;
-            this.value = value;
-        }
-
-        public List<CompoundTag> getEntitiesInChunk(int chunkX, int chunkZ) {
-            final List<CompoundTag> entitiesInChunk = new ArrayList<>();
-            for (CompoundTag entity : value) {
-                final int entityChunkX, entityChunkZ;
-                if (type == PlotEntitiesType.ENTITIES) {
-                    final ListTag<DoubleTag> positions = (ListTag<DoubleTag>) entity.getList("Pos");
-                    entityChunkX = (int) Math.floor(positions.get(0).data / 16.);
-                    entityChunkZ = (int) Math.floor(positions.get(2).data / 16.);
-                } else if (type == PlotEntitiesType.TILE_ENTITIES) {
-                    entityChunkX = (int) Math.floor(entity.getInt("x") / 16.);
-                    entityChunkZ = (int) Math.floor(entity.getInt("z") / 16.);
-                } else {
-                    throw new IllegalStateException("unreachable code");
-                }
-
-                if (entityChunkX == chunkX && entityChunkZ == chunkZ) {
-                    entitiesInChunk.add(entity);
-                }
-            }
-            return entitiesInChunk;
-        }
-
-        public List<CompoundTag> shiftPositions(Vector2D shift) {
-            final List<CompoundTag> shiftedEntities = new ArrayList<>();
-            for (CompoundTag entityOriginal : value) {
-                final CompoundTag entity = (CompoundTag) entityOriginal.copy();
-                if (type == PlotEntitiesType.ENTITIES) {
-                    final ListTag<DoubleTag> positions = (ListTag<DoubleTag>) entity.getList("Pos");
-                    positions.get(0).data += shift.getX();
-                    positions.get(2).data += shift.getZ();
-                } else if (type == PlotEntitiesType.TILE_ENTITIES) {
-                    entity.putInt("x", entity.getInt("x") + shift.getX());
-                    entity.putInt("z", entity.getInt("z") + shift.getX());
-                }
-                shiftedEntities.add(entity);
-            }
-            return shiftedEntities;
-        }
-
-        public List<CompoundTag> getValue() {
-            return value;
-        }
-
-        public PlotEntities copy() {
-            return new PlotEntities(type, new ArrayList<>(value));
-        }
-    }
-
-    public enum PlotEntitiesType {
-        ENTITIES,
-        TILE_ENTITIES,
-        ;
-    }
+    //    public PlotData copy() {
+//        return new PlotData(isChunk, chunks.clone());
+//    }
 }
