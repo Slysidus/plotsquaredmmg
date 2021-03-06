@@ -1,10 +1,10 @@
-package com.plotsquaredmg;
+package com.plotsquaredmmg;
 
-import com.plotsquaredmg.commands.MakeMegaSubCommand;
+import com.plotsquaredmmg.commands.MakeMegaSubCommand;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class PlotSquaredMG extends JavaPlugin {
+public final class PlotSquaredMMG extends JavaPlugin {
     @Override
     public void onEnable() {
         new MakeMegaSubCommand(this);

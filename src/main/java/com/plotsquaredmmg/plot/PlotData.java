@@ -1,8 +1,8 @@
-package com.plotsquaredmg.plot;
+package com.plotsquaredmmg.plot;
 
 import com.mojang.nbt.CompoundTag;
 import com.mojang.nbt.ListTag;
-import com.plotsquaredmg.util.Vector2D;
+import com.plotsquaredmmg.util.Vector2D;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectArrayMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import it.unimi.dsi.fastutil.longs.*;

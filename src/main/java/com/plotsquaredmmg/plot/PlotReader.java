@@ -1,4 +1,4 @@
-package com.plotsquaredmg.plot;
+package com.plotsquaredmmg.plot;
 
 import com.intellectualcrafters.plot.generator.SquarePlotWorld;
 import com.intellectualcrafters.plot.object.Location;

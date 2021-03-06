@@ -1,4 +1,4 @@
-package com.plotsquaredmg.commands;
+package com.plotsquaredmmg.commands;
 
 import com.intellectualcrafters.plot.PS;
 import com.intellectualcrafters.plot.commands.CommandCategory;
@@ -11,12 +11,12 @@ import com.intellectualcrafters.plot.object.SetupObject;
 import com.intellectualcrafters.plot.util.MainUtil;
 import com.intellectualcrafters.plot.util.SetupUtils;
 import com.plotsquared.general.commands.CommandDeclaration;
-import com.plotsquaredmg.PlotSquaredMG;
-import com.plotsquaredmg.plot.PlotReader;
-import com.plotsquaredmg.plot.PlotSaver;
-import com.plotsquaredmg.plot.PlotData;
-import com.plotsquaredmg.util.SnailGrid;
-import com.plotsquaredmg.util.Vector2D;
+import com.plotsquaredmmg.PlotSquaredMMG;
+import com.plotsquaredmmg.plot.PlotReader;
+import com.plotsquaredmmg.plot.PlotSaver;
+import com.plotsquaredmmg.plot.PlotData;
+import com.plotsquaredmmg.util.SnailGrid;
+import com.plotsquaredmmg.util.Vector2D;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -30,10 +30,10 @@ import java.util.logging.Logger;
 
 @CommandDeclaration(command = "mmg", permission = "plots.mmg", category = CommandCategory.ADMINISTRATION, requiredType = RequiredType.PLAYER, description = "Make mega world", usage = "/plot mmg <world>")
 public class MakeMegaSubCommand extends SubCommand implements Listener {
-    private final PlotSquaredMG plugin;
+    private final PlotSquaredMMG plugin;
     private volatile boolean inProgress;
 
-    public MakeMegaSubCommand(PlotSquaredMG plugin) {
+    public MakeMegaSubCommand(PlotSquaredMMG plugin) {
         this.plugin = plugin;
     }
 
@@ -126,7 +126,7 @@ public class MakeMegaSubCommand extends SubCommand implements Listener {
 
             plotData.newPlot(new Vector2D(0, 0));
             final SnailGrid snailGrid = new SnailGrid(gridIncrement, 0, 0);
-            final int generateProgressStep = plotsToGenerate / 5;
+            final int generateProgressStep = Math.max(1, plotsToGenerate / 5);
             for (int generated = 1; generated <= plotsToGenerate; generated++) {
                 plotData.newPlot(snailGrid.next());
                 if (generated % generateProgressStep == 0 || generated == plotsToGenerate) {

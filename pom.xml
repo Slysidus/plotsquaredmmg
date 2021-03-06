@@ -9,7 +9,7 @@
     <version>2.0.0</version>
     <packaging>jar</packaging>
 
-    <name>PlotSquaredMG</name>
+    <name>PlotSquaredMMG</name>
 
     <properties>
         <java.version>1.8</java.version>
@@ -47,15 +47,15 @@
                     <relocations>
                         <relocation>
                             <pattern>net.minecraft.world.level</pattern>
-                            <shadedPattern>com.plotsquaredmg.mclevel</shadedPattern>
+                            <shadedPattern>com.plotsquaredmmg.mclevel</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>com.mojang.nbt</pattern>
-                            <shadedPattern>com.plotsquaredmg.nbt</shadedPattern>
+                            <shadedPattern>com.plotsquaredmmg.nbt</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>it.unimi.dsi.fastutil</pattern>
-                            <shadedPattern>com.plotsquaredmg.fastutil</shadedPattern>
+                            <shadedPattern>com.plotsquaredmmg.fastutil</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

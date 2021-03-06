@@ -1,4 +1,4 @@
-package com.plotsquaredmg.plot;
+package com.plotsquaredmmg.plot;
 
 import com.mojang.nbt.CompoundTag;
 import com.mojang.nbt.ListTag;

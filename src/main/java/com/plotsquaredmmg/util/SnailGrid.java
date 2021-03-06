@@ -1,4 +1,4 @@
-package com.plotsquaredmg.util;
+package com.plotsquaredmmg.util;
 
 public class SnailGrid {
     private final int increment;

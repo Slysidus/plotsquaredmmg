@@ -1,8 +1,8 @@
-package com.plotsquaredmg.commands;
+package com.plotsquaredmmg.commands;
 
 import com.mojang.nbt.CompoundTag;
 import com.mojang.nbt.NbtIo;
-import com.plotsquaredmg.PlotSquaredMG;
+import com.plotsquaredmmg.PlotSquaredMMG;
 import net.minecraft.world.level.chunk.storage.RegionFile;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -16,9 +16,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 public class DumpChunkCommand implements CommandExecutor {
-    private final PlotSquaredMG plugin;
+    private final PlotSquaredMMG plugin;
 
-    public DumpChunkCommand(PlotSquaredMG plugin) {
+    public DumpChunkCommand(PlotSquaredMMG plugin) {
         this.plugin = plugin;
     }
 

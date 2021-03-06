@@ -1,4 +1,4 @@
-package com.plotsquaredmg;
+package com.plotsquaredmmg;
 
 import com.intellectualcrafters.plot.generator.HybridPlotManager;
 import com.intellectualcrafters.plot.generator.HybridPlotWorld;
